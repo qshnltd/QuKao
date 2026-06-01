@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role and onboarding status",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The email address of the user"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["guru", "siswa"],
+          "description": "The school role of the user"
+        },
+        "onboardingCompleted": {
+          "type": "boolean",
+          "description": "Indicates whether the user has finished the registration process"
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name in custom format (10-60 chars, UPPERCASE only)"
+        },
+        "username": {
+          "type": "string",
+          "description": "Unique lowercase alphanumeric username"
+        },
+        "dob": {
+          "type": "string",
+          "description": "Date of birth in DD/MM/YYYY format"
+        },
+        "uuid": {
+          "type": "string",
+          "description": "Generated unique formatted user UUID"
+        }
+      },
+      "required": ["email", "role", "onboardingCompleted"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Primary user profiles collection"
+    }
+  }
+}

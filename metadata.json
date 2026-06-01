@@ -1,0 +1,6 @@
+{
+  "name": "QuKao",
+  "description": "Platform Belajar & Ujian Interaktif",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,81 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Auth helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (request.auth.token.email == 'haibibie26@gmail.com' || request.auth.token.email == 'hbklrzltd@gmail.com');
+    }
+
+    // Helper to get incoming data
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // Helper to get existing data
+    function existing() {
+      return resource.data;
+    }
+
+    // User model validation blueprint
+    function isValidUser(data) {
+      return data.email is string && data.email.size() <= 200
+        && data.role is string && data.role in ['guru', 'siswa']
+        && data.onboardingCompleted is bool
+        && (!('name' in data) || (data.name is string && data.name.size() <= 200))
+        && (!('username' in data) || (data.username is string && data.username.size() <= 100))
+        && (!('dob' in data) || (data.dob is string && data.dob.size() <= 20))
+        && (!('uuid' in data) || (data.uuid is string && data.uuid.size() <= 100))
+        && (!('grade' in data) || (data.grade is string && data.grade.size() <= 100))
+        && (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 2000))
+        && (!('profileLimits' in data) || (data.profileLimits is map))
+        && (!('teacherVerificationStatus' in data) || (data.teacherVerificationStatus is string && data.teacherVerificationStatus in ['unverified', 'pending', 'verified', 'rejected']))
+        && (!('teacherVerificationData' in data) || (data.teacherVerificationData is map));
+    }
+
+    // otpTokens rules
+    match /otpTokens/{tokenId} {
+      allow get: if true;
+      allow create: if true;
+      allow update: if true;
+    }
+
+    // Users rules
+    match /users/{userId} {
+      // Allows individual user matches to be read only by their owner or admin
+      allow get: if (isOwner(userId) || isAdmin()) && isValidId(userId);
+      
+      // Limit list query securely to the owner's email or admin
+      allow list: if isAdmin() || (isSignedIn() && resource.data.email == request.auth.token.email);
+
+      // Allow registration creation
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUser(incoming());
+
+      // Allow updates
+      allow update: if (isOwner(userId) || isAdmin()) && isValidId(userId) && isValidUser(incoming()) && (
+        // Action 1: Completing onboarding
+        (existing().onboardingCompleted == false && incoming().onboardingCompleted == true && incoming().diff(existing()).affectedKeys().hasAny(['onboardingCompleted', 'name', 'username', 'dob', 'uuid', 'role'])) ||
+        // Action 2: Mode switching and profile updates
+        (existing().onboardingCompleted == true && incoming().onboardingCompleted == true && incoming().diff(existing()).affectedKeys().hasOnly(['role', 'name', 'username', 'avatarUrl', 'grade', 'profileLimits', 'teacherVerificationStatus', 'teacherVerificationData']))
+      );
+
+      allow delete: if false;
+    }
+  }
+}
